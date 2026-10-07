@@ -36,11 +36,7 @@ Geometric compatibility is evaluated using Bondi van der Waals radii and three s
 
 In addition, each terminal atom must be able to accept C–H···X contacts from its pocket (halogen, O, N or S); carbon termini are classified as incompatible.
 
-The screening criteria are informed by the geometric characteristics of experimentally characterized C3 inclusion complexes. Configurations approaching or exceeding the reference limits are distinguished through separate classification categories.
-
-## ✅ Evaluation
-
-The screening procedure was additionally evaluated against compounds experimentally reported not to form the corresponding inclusion phase (dichloromethane, methanol, n-hexane, 1,1-dichloroethane, 1,3-dichloropropane and cis-1,2-dichloroethylene). These compounds were classified as incompatible without adjustment of the screening criteria. The classifications remained unchanged when the chemical criterion was not applied.
+The screening criteria are informed by experimentally characterized C3 inclusion complexes and the observed inclusion behavior of guest molecules. These experimental references provide a basis for evaluating geometric compatibility and interpreting the resulting classifications.
 
 ## ⚠️ Scope and Limitations
 
