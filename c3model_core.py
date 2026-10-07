@@ -256,7 +256,7 @@ def judge(r, carbon_end_rule=True):
         r['verdict'] = 'beyond'; r['reasons'] = warns
     elif borders:
         r['verdict'] = 'border'; r['reasons'] = borders
-        why.append("Close to the reference limits; the screening cannot classify this molecule reliably.")
+        why.append("The geometry is close to the reference limits and is classified as borderline.")
     else:
         r['verdict'] = 'fits'; r['reasons'] = []
         why.append("Both termini occupy the C–H pockets of two neighbouring C3 rings without significant overlap "
