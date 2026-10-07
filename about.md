@@ -16,7 +16,7 @@ Geometric compatibility is evaluated using Bondi van der Waals radii and three s
 
 In addition, each terminal atom must be able to accept C–H···X contacts from its pocket (halogen, O, N or S); carbon termini are classified as incompatible.
 
-The screening criteria are informed by the geometric characteristics of experimentally characterized C3 inclusion complexes. Configurations approaching or exceeding the reference limits are distinguished through separate classification categories.
+The screening criteria are informed by the geometric characteristics of experimentally characterized C3 inclusion complexes. Minor deviations from the reference limits are classified as borderline, whereas substantial steric compression or overlap results in an incompatible classification.
 
 ### ✅ Evaluation
 

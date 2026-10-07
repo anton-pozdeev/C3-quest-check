@@ -186,7 +186,7 @@ def analyse(smi, nconf=60, ewin=3.0, seed=7):
 
 
 def judge(r, carbon_end_rule=True):
-    """Adds r['verdict'] in {'fits','no','beyond','border', ...}, r['checks'] = [(mark, name, text)],
+    """Adds r['verdict'] in {'fits','no','border', ...}, r['checks'] = [(mark, name, text)],
     r['reasons'] (short) and r['why'] (explanations). carbon_end_rule=False is kept only for testing."""
     if r['status'] != 'done':
         r['verdict'] = {'large': 'no', 'small': 'no'}.get(r['status'], r['status'])
@@ -194,7 +194,7 @@ def judge(r, carbon_end_rule=True):
         r['checks'], r['why'] = [], [r['message']]
         return r
     e1, e2 = r['ends']; s1, s2 = r['squeeze']; g1, g2 = r['gap']; wall = r['wall']
-    fails, warns, borders, chk, why = [], [], [], [], []
+    fails, borders, chk, why = [], [], [], []
 
     # 1. chemical criterion: terminal atoms must accept C-H...X contacts
     carbon = [e for e in (e1, e2) if e not in LONE_PAIR_ENDS]
@@ -226,11 +226,12 @@ def judge(r, carbon_end_rule=True):
     smax = max(s1, s2)
     ref = f"(reference: Cl {SQUEEZE_CL:.2f}, Br {SQUEEZE_BR:.2f} Å)"
     if smax > SQUEEZE_MAX:
-        chk.append(('⚠', 'Terminal compression', f"{s1:.2f} / {s2:.2f} Å {ref}"))
-        warns.append('termini larger than bromine')
-        why.append(f"The terminal atoms are larger than bromine (compression {smax:.2f} Å, compared with "
-                   f"{SQUEEZE_BR:.2f} Å for 1,2-dibromoethane, the largest among the characterized guests). "
-                   f"Guests of this size are outside the calibrated range.")
+        chk.append(('✗', 'Terminal compression',
+                    f"{s1:.2f} / {s2:.2f} Å (limit {SQUEEZE_MAX:.2f} Å)"))
+        fails.append('excessive terminal compression')
+        why.append(f"Terminal compression of {smax:.2f} Å exceeds the geometric incompatibility limit "
+                   f"of {SQUEEZE_MAX:.2f} Å. The guest is therefore incompatible with the "
+                   f"fixed C3 binding-site geometry under the screening criteria.")
     elif smax > SQUEEZE_BORDER:
         chk.append(('~', 'Terminal compression', f"{s1:.2f} / {s2:.2f} Å {ref}"))
         borders.append('terminal compression near limit')
@@ -252,8 +253,6 @@ def judge(r, carbon_end_rule=True):
 
     if fails:
         r['verdict'] = 'no'; r['reasons'] = fails
-    elif warns:
-        r['verdict'] = 'beyond'; r['reasons'] = warns
     elif borders:
         r['verdict'] = 'border'; r['reasons'] = borders
         why.append("The geometry is close to the reference limits and is classified as borderline.")
@@ -265,8 +264,8 @@ def judge(r, carbon_end_rule=True):
     return r
 
 
-ICON = {'fits': '✅', 'no': '❌', 'beyond': '⚠️', 'border': '➖', 'outside': '❔', 'unreadable': '❔'}
-LABEL = {'fits': 'COMPATIBLE', 'no': 'NOT COMPATIBLE', 'beyond': 'OUTSIDE CALIBRATED RANGE',
+ICON = {'fits': '✅', 'no': '❌', 'border': '➖', 'outside': '❔', 'unreadable': '❔'}
+LABEL = {'fits': 'COMPATIBLE', 'no': 'NOT COMPATIBLE',
          'border': 'BORDERLINE', 'outside': 'OUTSIDE THE MODEL', 'unreadable': 'COULD NOT READ'}
 
 

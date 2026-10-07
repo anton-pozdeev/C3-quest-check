@@ -18,14 +18,13 @@ if core._host_xyz is None:
     core.load_host((HERE / "host_site.txt").read_text())
 
 MARK = {'✓': '✔️', '✗': '❌', '⚠': '⚠️', '~': '➖'}
-BOX = {'fits': st.success, 'no': st.error, 'beyond': st.warning, 'border': st.info,
+BOX = {'fits': st.success, 'no': st.error, 'border': st.info,
        'outside': st.info, 'unreadable': st.info}
 
 LEGEND = """
 * ✅ **COMPATIBLE** – both termini occupy their pockets within the reference limits.
-* ❌ **NOT COMPATIBLE** – the reason is given for each molecule.
-* ⚠️ **OUTSIDE CALIBRATED RANGE** – terminal atoms larger than bromine, the largest characterized terminus.
-* ➖ **BORDERLINE** – between the reference limits and the incompatibility limits.
+* ❌ **NOT COMPATIBLE** – one or more essential geometric or chemical criteria are not satisfied.
+* ➖ **BORDERLINE** – modest deviations from the reference geometric limits.
 * ❔ **OUTSIDE THE MODEL** – salts, mixtures, charged species, elements other than H, C, N, O, F, S, Cl, Br, I.
 """
 

@@ -4,7 +4,7 @@ This tool evaluates the geometric and chemical compatibility of small molecules 
 PET cyclic trimer (C3) inclusion phase. Compatibility is assessed based on the structural criteria used in this
 screening model.
 
-**Web app:** https://YOUR-APP.streamlit.app
+**Web app:** https://c3-guest-check.streamlit.app
 
 Open the link, type one or more SMILES (separated by spaces or commas) and click **Check**.
 If the page says the app is asleep, click the button to wake it up and wait about a minute.
@@ -14,9 +14,8 @@ Examples: `Cl/C=C/Cl` (trans-1,2-dichloroethylene), `Cl/C=C\Cl` (cis), `ClCCCl` 
 ## Classification categories
 
 * ✅ **COMPATIBLE** – both termini occupy their pockets within the reference limits.
-* ❌ **NOT COMPATIBLE** – the reason is given for each molecule.
-* ⚠️ **OUTSIDE CALIBRATED RANGE** – terminal atoms larger than bromine, the largest characterized terminus.
-* ➖ **BORDERLINE** – between the reference limits and the incompatibility limits.
+* ❌ **NOT COMPATIBLE** – one or more essential geometric or chemical criteria are not satisfied.
+* ➖ **BORDERLINE** – modest deviations from the reference geometric limits.
 * ❔ **OUTSIDE THE MODEL** – salts, mixtures, charged species, elements other than H, C, N, O, F, S, Cl, Br, I.
 
 ## 🔬 Structural Model
@@ -57,7 +56,7 @@ The screening results provide an assessment of structural compatibility, which m
 * `about.md` – method description shown on the web page
 * `requirements.txt` – Python packages for the web app
 * `C3_guest_check.ipynb` – the same tool as a Google Colab notebook (alternative to the web app):
-  [open in Colab](https://colab.research.google.com/github/USER/REPO/blob/main/C3_guest_check.ipynb),
+  [open in Colab](https://colab.research.google.com/github/anton-pozdeev/C3-guest-check/blob/main/C3_guest_check.ipynb),
   then **Runtime → Run all**, type SMILES in the box that appears and click **Check**.
 
 To run the web app on your own computer: `pip install -r requirements.txt`, then `streamlit run app.py`.
