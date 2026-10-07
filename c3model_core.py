@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------------
-# C3 guest check: will a small molecule form the inclusion phase with the PET
-# cyclic trimer (C3)?
+# C3 inclusion-site compatibility screening: geometric and chemical compatibility
+# of small molecules with the guest site of the PET cyclic trimer (C3) inclusion phase.
 #
-# Model (geometry of the host + one chemical rule):
+# Model (host geometry + one chemical criterion):
 #   * In the inclusion phase each end of the guest sits in a pocket inside one
 #     C3 ring, lined by three aromatic C-H groups. The two pockets belong to two
 #     neighbouring C3 rings; between them is a flat slot.
@@ -10,10 +10,12 @@
 #     frozen. The guest is built from SMILES (RDKit, MMFF conformers within
 #     3 kcal/mol), its two most distant heavy atoms are placed into the two
 #     pockets, and it is rotated/shifted to the best fit.
-#   * Measured: does each end touch the three C-H of its pocket; how much the
-#     ends are squeezed; how much the rest of the molecule pushes into the walls.
-#   * Reference values come from the known guests in this host:
-#     Cl ends squeezed 0.12 A, Br ends 0.25 A; walls overlap <= 0.19 A.
+#   * Descriptors: pocket contact of each terminus, terminal compression, and
+#     overlap of the rest of the molecule with the host framework.
+#   * Reference limits: largest values among the experimentally characterized
+#     guests (1,2-dichloroethane, trans-1,2-dichloroethylene, 1,2-dibromoethane,
+#     1-bromo-2-chloroethane): terminal compression 0.25 A, framework overlap 0.19 A.
+#   * Chemical criterion: terminal atoms must carry lone pairs (halogen, O, N, S).
 # ---------------------------------------------------------------------------
 import numpy as np
 from rdkit import Chem, RDLogger
@@ -184,70 +186,69 @@ def analyse(smi, nconf=60, ewin=3.0, seed=7):
 
 
 def judge(r, carbon_end_rule=True):
-    """Adds r['verdict'] in {'fits','no','beyond','border', ...} and r['lines'] (checks) and r['why']."""
+    """Adds r['verdict'] in {'fits','no','beyond','border', ...}, r['checks'] = [(mark, name, text)],
+    r['reasons'] (short) and r['why'] (explanations). carbon_end_rule=False is kept only for testing."""
     if r['status'] != 'done':
         r['verdict'] = {'large': 'no', 'small': 'no'}.get(r['status'], r['status'])
         r['reasons'] = {'large': ['too large'], 'small': ['too small']}.get(r['status'], [])
-        r['lines'], r['why'] = [], [r['message']]
+        r['checks'], r['why'] = [], [r['message']]
         return r
     e1, e2 = r['ends']; s1, s2 = r['squeeze']; g1, g2 = r['gap']; wall = r['wall']
-    fails, warns, borders, lines, why = [], [], [], [], []
+    fails, warns, borders, chk, why = [], [], [], [], []
 
-    # 1. chemistry of the ends
+    # 1. chemical criterion: terminal atoms must accept C-H...X contacts
     carbon = [e for e in (e1, e2) if e not in LONE_PAIR_ENDS]
-    if carbon:
-        mark = '✗' if carbon_end_rule else '–'
-        lines.append(f"{mark} End atoms         {e1} and {e2}: a carbon end has no lone pairs for the pocket C–H"
-                     + ("" if carbon_end_rule else "  (rule switched off)"))
-        if carbon_end_rule:
-            fails.append('carbon end')
-            why.append("An end atom is carbon. Each pocket is lined by three aromatic C–H groups that hold the end "
-                       "through C–H···X contacts; a carbon end has no lone pairs to accept them "
-                       "(in DFT, replacing Cl by H weakens binding by about 10 kcal/mol).")
+    if carbon and carbon_end_rule:
+        chk.append(('✗', 'Terminal atoms', f"{e1} and {e2}: a carbon terminus cannot accept C–H···X contacts"))
+        fails.append('carbon terminus')
+        why.append("A terminal atom is carbon. Each pocket is formed by three aromatic C–H groups directed at the "
+                   "terminal atom; a carbon terminus has no lone pairs to accept C–H···X contacts. In DFT, ethane and "
+                   "ethylene bind at −10.0 and −8.3 kcal/mol, compared with −20.8 and −18.2 kcal/mol for "
+                   "1,2-dichloroethane and trans-1,2-dichloroethylene.")
     else:
-        lines.append(f"✓ End atoms         {e1} and {e2}: can accept C–H contacts")
+        chk.append(('✓', 'Terminal atoms', f"{e1} and {e2}: can accept C–H···X contacts"))
 
     # 2. pocket contact
     far = [(e, g) for e, g in ((e1, g1), (e2, g2)) if g > POCKET_TOUCH]
     if far:
         if len(far) == 2 and far[0][0] == far[1][0]:
-            txt = f"both {far[0][0]} ends: gap {far[0][1]:.2f} / {far[1][1]:.2f} Å"
+            txt = f"both {far[0][0]} termini: gap {far[0][1]:.2f} / {far[1][1]:.2f} Å (contact required)"
         else:
-            txt = ", ".join(f"{e} end: gap {g:.2f} Å" for e, g in far)
-        lines.append(f"✗ Pocket contact    {txt}  (must touch)")
-        fails.append('end does not reach pocket')
-        why.append("At least one end cannot touch the C–H groups of its pocket while the other end sits in its own "
-                   "pocket: the molecule is too short, or its end atom too small.")
+            txt = ", ".join(f"{e} terminus: gap {g:.2f} Å" for e, g in far) + " (contact required)"
+        chk.append(('✗', 'Pocket contact', txt))
+        fails.append('terminus does not reach its pocket')
+        why.append("At least one terminus cannot reach its pocket while the other occupies its own: the molecule "
+                   "is too short, or its terminal atom too small.")
     else:
-        lines.append(f"✓ Pocket contact    both ends touch the C–H groups of their pockets")
+        chk.append(('✓', 'Pocket contact', "both termini in contact with the C–H groups of their pockets"))
 
-    # 3. squeeze of the ends
+    # 3. terminal compression
     smax = max(s1, s2)
-    ref = f"(confirmed: Cl {SQUEEZE_CL:.2f}, Br {SQUEEZE_BR:.2f})"
+    ref = f"(reference: Cl {SQUEEZE_CL:.2f}, Br {SQUEEZE_BR:.2f} Å)"
     if smax > SQUEEZE_MAX:
-        lines.append(f"⚠ End fit           squeezed {s1:.2f} / {s2:.2f} Å  {ref}")
-        warns.append('ends larger than bromine')
-        why.append(f"The ends are larger than bromine (squeezed {smax:.2f} Å vs {SQUEEZE_BR:.2f} Å for "
-                   f"1,2-dibromoethane). The host is known to make room for bromine; whether it can open "
-                   f"further has not been checked yet.")
+        chk.append(('⚠', 'Terminal compression', f"{s1:.2f} / {s2:.2f} Å {ref}"))
+        warns.append('termini larger than bromine')
+        why.append(f"The terminal atoms are larger than bromine (compression {smax:.2f} Å, compared with "
+                   f"{SQUEEZE_BR:.2f} Å for 1,2-dibromoethane, the largest among the characterized guests). "
+                   f"Guests of this size are outside the calibrated range.")
     elif smax > SQUEEZE_BORDER:
-        lines.append(f"~ End fit           squeezed {s1:.2f} / {s2:.2f} Å  {ref}")
-        borders.append('ends at the bromine limit')
+        chk.append(('~', 'Terminal compression', f"{s1:.2f} / {s2:.2f} Å {ref}"))
+        borders.append('terminal compression near limit')
     else:
-        lines.append(f"✓ End fit           squeezed {max(s1,0):.2f} / {max(s2,0):.2f} Å  {ref}")
+        chk.append(('✓', 'Terminal compression', f"{max(s1, 0):.2f} / {max(s2, 0):.2f} Å {ref}"))
 
-    # 4. walls of the slot
-    lim = f"(confirmed guests ≤ {WALL_OK:.2f})"
+    # 4. framework overlap
+    lim = f"(reference ≤ {WALL_OK:.2f} Å)"
     if wall > WALL_MAX:
-        lines.append(f"✗ Walls             overlap {wall:.2f} Å  {lim}")
-        fails.append('hits the walls')
-        why.append("Part of the molecule pushes into the walls of the flat slot between the two rings — "
-                   "usually a side group, a bend, or a molecule that is too long or too bulky.")
+        chk.append(('✗', 'Framework overlap', f"{wall:.2f} Å {lim}"))
+        fails.append('framework overlap')
+        why.append("Part of the molecule overlaps with the host framework between the pockets — typically a side "
+                   "group, a bent geometry, or a molecule that is too long or too bulky.")
     elif wall > WALL_OK:
-        lines.append(f"~ Walls             overlap {wall:.2f} Å  {lim}")
-        borders.append('close to the walls')
+        chk.append(('~', 'Framework overlap', f"{wall:.2f} Å {lim}"))
+        borders.append('framework overlap near limit')
     else:
-        lines.append(f"✓ Walls             overlap {max(wall,0):.2f} Å  {lim}")
+        chk.append(('✓', 'Framework overlap', f"{max(wall, 0):.2f} Å {lim}"))
 
     if fails:
         r['verdict'] = 'no'; r['reasons'] = fails
@@ -255,33 +256,38 @@ def judge(r, carbon_end_rule=True):
         r['verdict'] = 'beyond'; r['reasons'] = warns
     elif borders:
         r['verdict'] = 'border'; r['reasons'] = borders
-        why.append("Close to the limits set by the confirmed guests; the model cannot decide this one reliably.")
+        why.append("Close to the reference limits; the screening cannot classify this molecule reliably.")
     else:
         r['verdict'] = 'fits'; r['reasons'] = []
-        why.append("Both ends sit in the C–H pockets of two neighbouring C3 rings, and nothing pushes into "
-                   "the walls between them.")
-    r['lines'], r['why'] = lines, why
+        why.append("Both termini occupy the C–H pockets of two neighbouring C3 rings without significant overlap "
+                   "with the host framework.")
+    r['checks'], r['why'] = chk, why
     return r
 
 
 ICON = {'fits': '✅', 'no': '❌', 'beyond': '⚠️', 'border': '➖', 'outside': '❔', 'unreadable': '❔'}
-LABEL = {'fits': 'FITS', 'no': 'DOES NOT FIT', 'beyond': 'BEYOND TESTED RANGE',
+LABEL = {'fits': 'COMPATIBLE', 'no': 'NOT COMPATIBLE', 'beyond': 'OUTSIDE CALIBRATED RANGE',
          'border': 'BORDERLINE', 'outside': 'OUTSIDE THE MODEL', 'unreadable': 'COULD NOT READ'}
 
 
+def checks(r):
+    return r.get('checks', [])
+
+
 def report(r):
-    bar = '═' * 72
+    bar = '═' * 76
     out = [bar, f"{r['smiles']}"]
     head = f"{ICON[r['verdict']]} {LABEL[r['verdict']]}"
     if r.get('reasons') and r['verdict'] != 'fits':
         head += ' — ' + '; '.join(r['reasons'])
     out.append(f"RESULT:  {head}")
     if r['status'] == 'done':
-        out.append(f"\n  Ends: {r['ends'][0]} … {r['ends'][1]}, {r['L']:.2f} Å apart (most extended shape within 3 kcal/mol)")
-        out += ['  ' + l for l in r['lines']]
+        out.append(f"\n  Termini: {r['ends'][0]} … {r['ends'][1]}, {r['L']:.2f} Å apart "
+                   f"(most extended conformer within 3 kcal/mol)")
+        out += [f"  {m} {name:<21s}{text}" for m, name, text in r['checks']]
     out.append('')
     for w in r['why']:
-        out += _wrap(w, 70, '  ')
+        out += _wrap(w, 74, '  ')
     return '\n'.join(out)
 
 
@@ -295,27 +301,22 @@ def _wrap(text, width, indent):
     return lines
 
 
-def run(text, carbon_end_rule=True):
-    items = [s for s in text.replace(',', ' ').replace(';', ' ').split() if s]
+def split_input(text):
+    return [s for s in text.replace(',', ' ').replace(';', ' ').split() if s]
+
+
+def run(text):
+    items = split_input(text)
     if not items:
-        print("Type one or more SMILES in the box above (separated by spaces or commas), then run again.")
+        print("Type one or more SMILES in the box above (separated by spaces or commas).")
         return
     results = []
     for smi in items:
-        r = judge(analyse(smi), carbon_end_rule)
+        r = judge(analyse(smi))
         results.append(r)
         print(report(r), flush=True)
     if len(results) > 1:
-        print('═' * 72 + '\nSUMMARY')
+        print('═' * 76 + '\nSUMMARY')
         for r in results:
             extra = f"  ({'; '.join(r['reasons'])})" if r.get('reasons') and r['verdict'] != 'fits' else ''
-            print(f"  {ICON[r['verdict']]} {LABEL[r['verdict']]:<20s} {r['smiles']}{extra}")
-
-
-def checks(r):
-    """Structured form of r['lines']: list of (mark, check name, text)."""
-    return [(l[0], l[2:20].strip(), l[20:].strip()) for l in r.get('lines', [])]
-
-
-def split_input(text):
-    return [s for s in text.replace(',', ' ').replace(';', ' ').split() if s]
+            print(f"  {ICON[r['verdict']]} {LABEL[r['verdict']]:<25s} {r['smiles']}{extra}")
